@@ -12,9 +12,7 @@ func (jd *JobDispatcher) startTimer(timeValue int, timeUnit string) {
 		return
 	}
 	for timeUnit == "" {
-		fmt.Printf("Enter a time followed by valid unit. (sec, min, hr) or exit to go back: ")
-		input, _ := reader.ReadString('\n')
-		input = strings.TrimSpace(input)
+		input := getInput("Enter a time followed by valid unit. (sec, min, hr) or exit to go back: ")
 		words := strings.Fields(input)
 
 		if words[0] == EXIT {
@@ -66,7 +64,7 @@ func (jd *JobDispatcher) startTimer(timeValue int, timeUnit string) {
 }
 
 func (jd *JobDispatcher) stopTimer() {
-	id := isValidInput("Enter the user ID to stop its timer: ")
+	id := getInput("Enter the user ID to stop its timer: ")
 	timer, exists := jd.findUser(id)
 
 	if !exists {
@@ -81,7 +79,7 @@ func (jd *JobDispatcher) stopTimer() {
 }
 
 func (jd *JobDispatcher) queryTimer() {
-	id := isValidInput("Enter the user ID to check the status of the timer: ")
+	id := getInput("Enter the user ID to check the status of the timer: ")
 	timer, exists := jd.findUser(id)
 	if !exists {
 		fmt.Printf("No timer with ID %s found.\n", id)

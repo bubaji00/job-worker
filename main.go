@@ -29,12 +29,13 @@ func main() {
 	var jobDispatch = JobDispatcher{
 		jobs: make(map[string]*job),
 	}
+
 	rootCmd := setupCommands(&jobDispatch)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
 	}
-
-	for {
-		jobDispatch.getInput()
-	}
+	jobDispatch.start()
+	//or {
+	//	jobDispatch.start()
+	//}
 }

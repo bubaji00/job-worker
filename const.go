@@ -1,12 +1,18 @@
 package main
 
-import "time"
+import (
+	"strconv"
+	"time"
+)
 
 const JobLimit int = 5
-const JobLimitPrompt = "Can not start a new timer, 5 timer limit reached"
-const TimeLimit = 100 * time.Hour
-const TimeLimitPrompt string = "Error: The entered time exceeds the 100-hour limit."
 
+var JobLimitPrompt = "Can not start a new timer, " + strconv.Itoa(JobLimit) + " timer limit reached"
+
+const TimeLimit = 100 * time.Hour
+const TimeLimitPrompt = "Error: The entered time exceeds the 100-hour limit."
+
+const CRON string = "cron"
 const START string = "start"
 const STOP string = "stop"
 const QUERY string = "query"

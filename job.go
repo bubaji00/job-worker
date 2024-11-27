@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/robfig/cron/v3"
 	"os"
 	"strings"
 	"sync"
@@ -50,7 +51,7 @@ func (jd *JobDispatcher) timerLimit() bool {
 	fmt.Printf("There are %d completed or stopped timers ready for deletion:\n", len(jobsToDelete))
 
 	// Ask for user confirmation
-	input := isValidInput("Do you want to delete these jobs from the map? (y/n): ")
+	input := getSingleInput("Do you want to delete these jobs from the map? (y/n): ")
 	if input != YES && input != Y {
 		fmt.Println("No jobs were deleted.")
 		return true
@@ -94,58 +95,65 @@ func (jd *JobDispatcher) newJob(timeDuration time.Duration, timeUnit string) job
 	return newTimer
 }
 
-func (jd *JobDispatcher) getInput() {
-	fmt.Println("start: start a timer            |stop: stop a timer")
-	fmt.Println("query: return status of a timer |end: terminate the program")
-	fmt.Printf("Enter a new command: ")
+func (jd *JobDispatcher) start() {
+	c := cron.New()
+	go c.Start()
+	//defer c.Stop()
 
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimSpace(input)
-	words := strings.Fields(input)
-
-	if len(words) != 1 {
-		fmt.Printf("No command or more than 1 command entered, please try again.\n")
-		return
+	prompt := "Available Commands:\n" +
+		"• start: Start a timer\n" +
+		"• stop: Stop a timer\n" +
+		"• query: Return the status of a timer\n" +
+		"• cron: Start a cron job\n" +
+		"• end: Terminate the program\n" +
+		"Enter a command: "
+	for {
+		command := getSingleInput(prompt)
+		switch command {
+		case START:
+			jd.startTimer(-1, EMPTY)
+		case STOP:
+			jd.stopTimer()
+		case QUERY:
+			jd.queryTimer()
+		case END:
+			fmt.Println("Exiting program. Bye!")
+			c.Stop()
+			os.Exit(0)
+		case CRON:
+			cronJob(c)
+		default:
+			fmt.Printf("Please only enter valid command: start/stop/query/cron/end\n")
+		}
+		fmt.Println()
 	}
-	command := words[0]
-	switch command {
-	case START:
-		jd.startTimer(-1, EMPTY)
-	case STOP:
-		jd.stopTimer()
-	case QUERY:
-		jd.queryTimer()
-	case END:
-		fmt.Println("Exiting program. Bye!")
-		os.Exit(0)
-	default:
-		fmt.Printf("Please only enter valid command: start/stop/query/end\n")
-	}
-	fmt.Println()
 }
 
 // starting a timer in go routine, and store it in map for future reference
-
 func isValidUnit(unit string) bool {
 	validUnits := map[string]bool{SEC: true, MIN: true, HR: true}
 	return validUnits[unit]
 }
 
-func isValidInput(prompt string) string {
-	fmt.Printf(prompt)
-	input, _ := reader.ReadString('\n')
-	input = strings.TrimSpace(input)
+func getSingleInput(prompt string) string {
+	input := getInput(prompt)
 	words := strings.Fields(input)
 	if len(words) != 1 {
 		fmt.Println("No argument or more than 1 argument received.")
 		return EMPTY
 	}
-	return words[0]
+	return strings.ToLower(words[0])
+}
+
+func getInput(prompt string) string {
+	fmt.Printf(prompt)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	return input
 }
 
 func convertTime(val int, unit string) time.Duration {
-	// Convert the time to time.Duration
-	switch unit {
+	switch unit { // Convert the time to time.Duration
 	case SEC:
 		return time.Duration(val) * time.Second
 	case MIN:
