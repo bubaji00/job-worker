@@ -1,4 +1,4 @@
-package main
+package worker
 
 import (
 	"bufio"
@@ -11,32 +11,32 @@ import (
 	"time"
 )
 
-var mutex sync.RWMutex
+var Mutex sync.RWMutex
 var reader = bufio.NewReader(os.Stdin)
 
 type JobDispatcher struct {
-	jobs map[string]*job // map of job id to job initialized as empty
+	Jobs map[string]*Job // map of job id to job initialized as empty
 }
 
-type job struct {
+type Job struct {
 	duration time.Duration
 	start    time.Time
-	state    string
+	State    string
 	id       string
 	unit     string
 	stopChan chan bool
 }
 
 func (jd *JobDispatcher) timerLimit() bool {
-	if len(jd.jobs) < JobLimit {
+	if len(jd.Jobs) < JobLimit {
 		return false
 	}
 
 	fmt.Println(JobLimitPrompt)
 	// offer to delete timer that are stopped or completed
 	var jobsToDelete []string
-	for id, job := range jd.jobs {
-		if job.state == COMPLETED || job.state == STOPPED {
+	for id, job := range jd.Jobs {
+		if job.State == COMPLETED || job.State == STOPPED {
 			jobsToDelete = append(jobsToDelete, id)
 		}
 	}
@@ -59,43 +59,43 @@ func (jd *JobDispatcher) timerLimit() bool {
 
 	// Delete the selected jobs
 	for _, id := range jobsToDelete {
-		delete(jd.jobs, id)
+		delete(jd.Jobs, id)
 	}
 	fmt.Printf("Deleted %d jobs from the map.\n", len(jobsToDelete))
 	return false
 }
 
-func (jd *JobDispatcher) findUser(id string) (*job, bool) {
-	mutex.RLock()
-	timer, exists := jd.jobs[id]
-	mutex.RUnlock() // Unlock before returning
+func (jd *JobDispatcher) findUser(id string) (*Job, bool) {
+	Mutex.RLock()
+	timer, exists := jd.Jobs[id]
+	Mutex.RUnlock() // Unlock before returning
 	return timer, exists
 }
 
-func (jb *job) changeState(changedState string) {
-	mutex.Lock()
-	jb.state = changedState
-	mutex.Unlock()
+func (jb *Job) changeState(changedState string) {
+	Mutex.Lock()
+	jb.State = changedState
+	Mutex.Unlock()
 }
 
-func (jd *JobDispatcher) newJob(timeDuration time.Duration, timeUnit string) job {
+func (jd *JobDispatcher) newJob(timeDuration time.Duration, timeUnit string) Job {
 	timerId := uuid.NewString()[:6]
-	newTimer := job{
+	newTimer := Job{
 		id:       timerId,
 		duration: timeDuration,
 		start:    time.Now(),
-		state:    STARTED,
+		State:    STARTED,
 		unit:     timeUnit,
 		stopChan: make(chan bool),
 	} // construct a new job struct
 
-	mutex.Lock()                 // write lock
-	jd.jobs[timerId] = &newTimer // store job in map
-	mutex.Unlock()
+	Mutex.Lock()                 // write lock
+	jd.Jobs[timerId] = &newTimer // store job in map
+	Mutex.Unlock()
 	return newTimer
 }
 
-func (jd *JobDispatcher) start() {
+func (jd *JobDispatcher) Start() {
 	c := cron.New()
 	go c.Start()
 	//defer c.Stop()
@@ -111,11 +111,11 @@ func (jd *JobDispatcher) start() {
 		command := getSingleInput(prompt)
 		switch command {
 		case START:
-			jd.startTimer(-1, EMPTY)
+			jd.StartTimerCLI(-1, EMPTY)
 		case STOP:
-			jd.stopTimer()
+			jd.stopTimerCLI()
 		case QUERY:
-			jd.queryTimer()
+			jd.queryTimerCLI()
 		case END:
 			fmt.Println("Exiting program. Bye!")
 			c.Stop()
@@ -130,7 +130,7 @@ func (jd *JobDispatcher) start() {
 }
 
 // starting a timer in go routine, and store it in map for future reference
-func isValidUnit(unit string) bool {
+func IsValidUnit(unit string) bool {
 	validUnits := map[string]bool{SEC: true, MIN: true, HR: true}
 	return validUnits[unit]
 }
@@ -152,7 +152,7 @@ func getInput(prompt string) string {
 	return input
 }
 
-func convertTime(val int, unit string) time.Duration {
+func ConvertTime(val int, unit string) time.Duration {
 	switch unit { // Convert the time to time.Duration
 	case SEC:
 		return time.Duration(val) * time.Second

@@ -1,4 +1,4 @@
-package main
+package worker
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ func getCurrentTime() string {
 }
 
 func cronJobsExecutes(name string) {
-	fmt.Printf("Task '%s' executed at %s\n",
+	fmt.Printf("\nTask '%s' executed at %s\n",
 		name, getCurrentTime())
 	fmt.Printf("hello world %d\n", a)
 	fmt.Printf("Enter a new command: ")

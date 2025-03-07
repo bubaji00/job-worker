@@ -1,13 +1,12 @@
-package main
+package worker
 
 import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 )
 
-func (jd *JobDispatcher) startTimer(timeValue int, timeUnit string) {
+func (jd *JobDispatcher) StartTimerCLI(timeValue int, timeUnit string) {
 	if jd.timerLimit() {
 		return
 	}
@@ -29,7 +28,7 @@ func (jd *JobDispatcher) startTimer(timeValue int, timeUnit string) {
 			continue
 		}
 
-		if !isValidUnit(words[1]) {
+		if !IsValidUnit(words[1]) {
 			fmt.Println("Error: The 'unit' must be one of 'sec', 'min', or 'hr'.")
 			continue
 		}
@@ -39,7 +38,7 @@ func (jd *JobDispatcher) startTimer(timeValue int, timeUnit string) {
 		break
 	}
 
-	duration := convertTime(timeValue, timeUnit)
+	duration := ConvertTime(timeValue, timeUnit)
 
 	// Check if the duration exceeds the limit
 	if duration > TimeLimit {
@@ -51,39 +50,32 @@ func (jd *JobDispatcher) startTimer(timeValue int, timeUnit string) {
 
 	fmt.Printf("Timer %s started for %d %s.\n", newTimer.id, timeValue, newTimer.unit)
 
-	go func(t *job, timeValue int) {
-		select {
-		case <-time.After(t.duration):
-			fmt.Printf("Timer %d %s for %s is completed!\n", timeValue, t.unit, t.id)
-			fmt.Printf("Enter a new command: ")
-			t.changeState(COMPLETED)
-		case <-t.stopChan:
-			t.changeState(STOPPED)
-		}
-	}(&newTimer, timeValue)
-}
-
-func (jd *JobDispatcher) stopTimer() {
-	id := getInput("Enter the user ID to stop its timer: ")
-	timer, exists := jd.findUser(id)
-
-	if !exists {
+	jobID, err := jd.StartTimerCore(duration, timeUnit)
+	if err != nil {
+		fmt.Printf("Error starting timer: %v\n", err)
 		return
-	} else if timer.state != STARTED {
-		fmt.Printf("Timer has already been %s\n", timer.state)
-	} else {
-		fmt.Printf("Timer %s has been stopped!\n", timer.id)
-		timer.stopChan <- true
 	}
+
+	fmt.Printf("Timer %s started for %d %s.\n", jobID, timeValue, timeUnit)
+}
+
+func (jd *JobDispatcher) stopTimerCLI() {
+	id := getInput("Enter the user ID to stop its timer: ")
+
+	if err := jd.StopTimerCore(id); err != nil {
+		fmt.Printf("Error stopping timer: %v\n", err)
+		return
+	}
+	fmt.Printf("Timer %s has been stopped!\n", id)
 
 }
 
-func (jd *JobDispatcher) queryTimer() {
-	id := getInput("Enter the user ID to check the status of the timer: ")
-	timer, exists := jd.findUser(id)
-	if !exists {
-		fmt.Printf("No timer with ID %s found.\n", id)
-	} else {
-		fmt.Printf("Timer %s status: %s\n", id, timer.state)
+func (jd *JobDispatcher) queryTimerCLI() {
+	id := getInput("Enter the user ID to check the status: ")
+	state, err := jd.QueryTimerCore(id)
+	if err != nil {
+		fmt.Printf("Error: %v\n", err)
+		return
 	}
+	fmt.Printf("Timer %s status: %s\n", id, state)
 }

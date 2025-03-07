@@ -3,39 +3,50 @@
 
 //since last meeting: adjusted mutex lock and unlock, refactoring into different file, OOD, prevent large time input (<100hr)
 
-// 10/8 suggestion from teacher: have another file for global number, const, prompt, "compeled", "stopped"
-// format input string prompt
-/* pull out
-mutex.Lock()                 // write lock
-jd.jobs[timerId] = &newTimer // store job in map
-mutex.Unlock()
-*/
-// no big deal for circular buffer
-//timer wheel is better
 // at the end of the project, user can start a timer and when the time is reached it will execute some cmd command on a remote machine
-
-//parse cron express
-//understand grpc, no need to mix first
-//do a hello world grpc, say hello,
-//add authentication, as simple as password, and code
 
 package main
 
 import (
 	"fmt"
+	"google.golang.org/grpc"
+	pb "jobWorker/proto"
+	"jobWorker/server"
+	"jobWorker/worker"
+	"log"
+	"net"
 )
 
 func main() {
-	var jobDispatch = JobDispatcher{
-		jobs: make(map[string]*job),
+	var jobDispatch = worker.JobDispatcher{
+		Jobs: make(map[string]*worker.Job),
 	}
 
-	rootCmd := setupCommands(&jobDispatch)
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+	// 2. Listen on a port for gRPC
+	listener, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		log.Fatalf("Failed to listen on :50051: %v", err)
 	}
-	jobDispatch.start()
-	//or {
-	//	jobDispatch.start()
-	//}
+
+	// 3. Create a gRPC server
+	grpcServer := grpc.NewServer()
+
+	// 4. Create and register your JobManagerServer
+	jobManagerServer := server.NewJobManagerServer(&jobDispatch)
+	pb.RegisterJobManagerServer(grpcServer, jobManagerServer)
+
+	fmt.Println("gRPC server running on port 50051")
+
+	// 5. Start serving
+	if err := grpcServer.Serve(listener); err != nil {
+		log.Fatalf("Failed to serve gRPC: %v", err)
+	}
+
+	/*
+		rootCmd := cmd.SetupCommands(&jobDispatch)
+		if err := rootCmd.Execute(); err != nil {
+			fmt.Println(err)
+		}
+		jobDispatch.Start()
+	*/
 }
